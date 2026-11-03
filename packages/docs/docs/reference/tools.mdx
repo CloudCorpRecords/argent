@@ -121,6 +121,13 @@ The MCP server picks how a screenshot reaches the agent:
 | `view-network-logs`            | Retrieve captured HTTP requests from the running app                      |
 | `view-network-request-details` | Get full details of one request by its `requestId`                        |
 
+The results of the `debugger-*` tools name the app that the call reached: `deviceName`, `appName` and `logicalDeviceId`. `debugger-component-tree` gives them in its first line. Through the MCP server:
+
+- `debugger-connect` and `debugger-status` always return these fields.
+- The other `debugger-*` tools return them on the first call for a `device_id` and port. After that, they return them only when the app changes.
+
+When a later call returns these fields, the call reached a different app. The Argent SDK returns the fields on every call.
+
 ## Native devtools
 
 | Tool                                     | Description                                                           |

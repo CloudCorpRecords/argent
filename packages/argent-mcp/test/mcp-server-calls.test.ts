@@ -333,6 +333,73 @@ describe("startMcpServer tool calls", () => {
   });
 });
 
+describe("startMcpServer debugger identity", () => {
+  const IOS = {
+    deviceName: "iPhone 17",
+    appName: "com.example.app (iPhone 17)",
+    logicalDeviceId: "aaa",
+  };
+  const ANDROID = {
+    deviceName: "Pixel 9",
+    appName: "com.example.app (Google Pixel 9)",
+    logicalDeviceId: "bbb",
+  };
+  const ARGS = { device_id: "6DBF83B4-F341-4F8D-B48D-CD8FF312CCFB" };
+  let stub: Stub;
+  let client: Client;
+  let evaluated: Array<Record<string, unknown>>;
+
+  beforeEach(async () => {
+    evaluated = [];
+    const answer = (res: http.ServerResponse, data: unknown) => {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ data }));
+    };
+    stub = await startStub({
+      listing: {
+        tools: ["debugger-connect", "debugger-evaluate"].map((name) => ({
+          name,
+          description: name,
+          inputSchema: { type: "object", properties: {} },
+        })),
+      },
+      routes: {
+        "/tools/debugger-connect": (res) => answer(res, { port: 8081, connected: true, ...IOS }),
+        "/tools/debugger-evaluate": (res) => {
+          // The third call reaches the Android app: the iOS app quit and it is the only one left.
+          const next = evaluated.length < 2 ? { result: 2, ...IOS } : { result: 3, ...ANDROID };
+          evaluated.push(next);
+          answer(res, next);
+        },
+      },
+    });
+    vi.stubEnv("ARGENT_TOOLS_URL", stub.url);
+    client = await connect({
+      bundlePath: join(TEST_HOME, "missing", "tool-server.cjs"),
+      simulatorServerDir: "",
+      nativeDevtoolsDir: "",
+    });
+  });
+
+  afterEach(async () => {
+    await client.close();
+    vi.unstubAllEnvs();
+    await stub.close();
+  });
+
+  it("names the app once, and again when the same device_id reaches a different one", async () => {
+    const call = async (name: string) =>
+      JSON.parse(textOf(await client.callTool({ name, arguments: ARGS }))) as unknown;
+
+    expect(await call("debugger-connect")).toEqual({ port: 8081, connected: true, ...IOS });
+    expect(await call("debugger-evaluate")).toEqual({ result: 2 });
+    expect(await call("debugger-evaluate")).toEqual({ result: 2 });
+    expect(await call("debugger-evaluate")).toEqual({ result: 3, ...ANDROID });
+    // The tool-server still sent the identity every time; only the agent's copy is shorter.
+    expect(evaluated.every((r) => typeof r.deviceName === "string")).toBe(true);
+  });
+});
+
 describe("startMcpServer tool listing per client", () => {
   const listing = {
     tools: [

@@ -47,6 +47,7 @@ import { autoScreenshotForm, screenshotForm } from "./client-images.js";
 import { SERVER_INSTRUCTIONS } from "./instructions.js";
 import { getInstalledVersion } from "./installed-version.js";
 import { createToolCaller } from "./tool-caller.js";
+import { createDebuggerIdentityMemo } from "./debugger-identity.js";
 
 export { fetchWithReconnect } from "./tool-caller.js";
 
@@ -273,6 +274,9 @@ export async function startMcpServer(options: StartMcpServerOptions): Promise<vo
     }
   });
 
+  // One per MCP session: which app this agent has already seen each debugger target reach.
+  const debuggerIdentity = createDebuggerIdentityMemo();
+
   server.setRequestHandler(CallToolRequestSchema, async ({ params }) => {
     const t0 = Date.now();
     await spyLog({
@@ -282,7 +286,8 @@ export async function startMcpServer(options: StartMcpServerOptions): Promise<vo
       args: params.arguments,
     });
     try {
-      const { result, outputHint, note, profiling } = await callTool(params.name, params.arguments);
+      const called = await callTool(params.name, params.arguments);
+      const { outputHint, note, profiling } = called;
 
       await spyLog({
         ts: new Date().toISOString(),
@@ -290,8 +295,14 @@ export async function startMcpServer(options: StartMcpServerOptions): Promise<vo
         name: params.name,
         durationMs: Date.now() - t0,
         isError: false,
-        result,
+        result: called.result,
       });
+
+      const result = debuggerIdentity.forAgent(
+        canonicalToolId(params.name),
+        params.arguments,
+        called.result
+      );
 
       const ctx: ContentContext = {
         toolsUrl: TOOLS_URL,

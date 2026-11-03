@@ -25,7 +25,7 @@ export const debuggerEvaluateTool: ToolDefinition<
 > = {
   id: "debugger-evaluate",
   description: `Execute arbitrary JavaScript in the app's JS runtime via CDP: Hermes on iOS / Android / Vega, V8 on Chromium.
-Returns the result serialized by value as JSON, with deviceName, appName, and logicalDeviceId. Use when you need to read app state, call app functions, or test logic at runtime. Cyclic objects, which many RN runtime values are (fiber nodes, navigation refs, global), fail with a serialization error. Fails if the expression throws or the runtime is not connected.`,
+Returns the result serialized by value as JSON, and deviceName, appName and logicalDeviceId, the app the call reached. Through MCP, those three come on the first call for a device_id and again only when they change: then the call reached a different app than before, so check it is the one you mean. Use when you need to read app state, call app functions, or test logic at runtime. Cyclic objects, which many RN runtime values are (fiber nodes, navigation refs, global), fail with a serialization error. Fails if the expression throws or the runtime is not connected.`,
   zodSchema,
   interaction: {
     startedMsg: () => "Running JavaScript in the app",
