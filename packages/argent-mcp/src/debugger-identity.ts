@@ -52,7 +52,8 @@ function targetKey(args: unknown): string | undefined {
     return undefined;
   }
   // `port` is coerced to a number by the tool-server, so "8081" and 8081 are one target.
-  const port = args.port === undefined || args.port === null ? "" : String(args.port);
+  const port =
+    typeof args.port === "number" || typeof args.port === "string" ? String(args.port) : "";
   return `${port}|${args.device_id}`;
 }
 
