@@ -9,7 +9,11 @@ import {
 } from "../../utils/adb";
 import { adbCommandPrefix } from "../../utils/adb-server";
 import { listRunningVvdConsolePorts } from "../../utils/vega-process";
-import { listIosSimulators, type IosSimulator } from "../../utils/ios-devices";
+import {
+  listIosSimulators,
+  simulatorRuntimeKind,
+  type IosSimulator,
+} from "../../utils/ios-devices";
 import { listIosPhysicalDevices } from "../../utils/ios-device/devicectl";
 import { simctlListDevices } from "../../utils/sim-remote";
 import { withRemotePrefix, harmonyDeviceId, harmonyEmulatorId } from "../../utils/device-info";
@@ -50,6 +54,7 @@ type IosRemoteDevice = {
   name: string;
   state: string;
   runtime: string;
+  runtimeKind?: "mobile" | "tv";
 };
 
 type AndroidDevice = {
@@ -203,6 +208,7 @@ async function listRemoteIosSimulators(): Promise<IosRemoteDevice[]> {
           name: d.name,
           state: d.state,
           runtime,
+          runtimeKind: simulatorRuntimeKind(runtime),
         });
       }
     }
